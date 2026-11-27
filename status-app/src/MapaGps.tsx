@@ -303,15 +303,6 @@ export function MapaGps() {
   });
 
   const [avisoCurtida, setAvisoCurtida] = useState('');
-
-  useEffect(() => {
-    if (modoGame || usuarioGameAberto) return;
-
-    if (!('geolocation' in navigator)) {
-      setStatusGps('GPS indisponível neste navegador');
-      return;
-    }
-
   const [focoCoordenadas, setFocoCoordenadas] = useState<Coordenadas | null>(
     null
   );
@@ -332,6 +323,14 @@ export function MapaGps() {
     setFocoCoordenadas(null);
     setAvatarFocadoId(null);
   };
+
+  useEffect(() => {
+    if (modoGame || usuarioGameAberto) return;
+
+    if (!('geolocation' in navigator)) {
+      setStatusGps('GPS indisponível neste navegador');
+      return;
+    }
 
     const watchId = navigator.geolocation.watchPosition(
       (posicao) => {
@@ -372,6 +371,7 @@ export function MapaGps() {
 
   const iconesSimulados = useMemo(() => {
     return USUARIOS_SIMULADOS.map((usuario) => {
+      const estaFocado = avatarFocadoId === usuario.id;
       const jaCurtiu = idsCurtidos.includes(usuario.id);
       const totalCurtidas = curtidasPorUsuario[usuario.id] ?? 0;
       const verbo = VERBO_ACAO[usuario.acao];
@@ -390,7 +390,7 @@ export function MapaGps() {
 
       const htmlFaixa = renderToStaticMarkup(
         <div className="flex items-center gap-1.5">
-          <div className="w-[156px] overflow-hidden rounded-full border border-black bg-yellow-300 px-2.5 py-0.5 text-[10px] shadow-md">
+          <div className="w-[156px] max-w-[68vw] overflow-hidden rounded-full border border-black bg-yellow-300 px-2.5 py-0.5 text-[10px] shadow-md">
             {deveRolar ? (
               <div
                 className="flex w-max whitespace-nowrap"
@@ -422,11 +422,20 @@ export function MapaGps() {
       );
 
       const htmlAvatar = renderToStaticMarkup(
-        <AvatarStatus nome={usuario.apelido} visual={usuario.visualAvatar} />
+        <div
+          className={`transition-transform duration-200 rounded-full ${
+            estaFocado
+              ? 'scale-110 ring-2 ring-amber-300 shadow-lg'
+              : 'opacity-90'
+          }`}
+        >
+          <AvatarStatus nome={usuario.apelido} visual={usuario.visualAvatar} />
+        </div>
       );
 
       return {
         usuario,
+        estaFocado,
         coord: {
           lat: coords.lat + usuario.offsetLat,
           lng: coords.lng + usuario.offsetLng,
@@ -440,13 +449,19 @@ export function MapaGps() {
         }),
         iconeAvatar: L.divIcon({
           html: htmlAvatar,
-          className: 'bg-transparent border-0 cursor-pointer opacity-90',
+          className: 'bg-transparent border-0 cursor-pointer',
           iconSize: [72, 88],
           iconAnchor: [36, 44],
         }),
       };
     });
-  }, [coords.lat, coords.lng, curtidasPorUsuario, idsCurtidos]);
+  }, [
+    avatarFocadoId,
+    coords.lat,
+    coords.lng,
+    curtidasPorUsuario,
+    idsCurtidos,
+  ]);
 
   const verboAtual = VERBO_ACAO[dadosStatus.acao];
   const corApelidoClasse = COR_APELIDO_CLASS[dadosStatus.corApelido];
@@ -480,7 +495,7 @@ export function MapaGps() {
     );
 
     const html = renderToStaticMarkup(
-      <div className="w-[176px] overflow-hidden rounded-full border border-black bg-yellow-300 px-2.5 py-0.5 text-[10px] shadow-md">
+      <div className="w-[176px] max-w-[68vw] overflow-hidden rounded-full border border-black bg-yellow-300 px-2.5 py-0.5 text-[10px] shadow-md">
         {deveRolar ? (
           <div
             className="flex w-max whitespace-nowrap"
@@ -633,12 +648,12 @@ export function MapaGps() {
         />
 
         {iconesSimulados.map(
-          ({ usuario, coord, iconeFaixa, iconeAvatar: iconeAv }) => (
+          ({ usuario, estaFocado, coord, iconeFaixa, iconeAvatar: iconeAv }) => (
             <div key={usuario.id}>
               <Marker
                 position={[coord.lat, coord.lng]}
                 icon={iconeFaixa}
-                zIndexOffset={-10}
+                zIndexOffset={estaFocado ? 5 : -10}
                 eventHandlers={{
                   click: (evento) => {
                     const alvo = evento.originalEvent.target as HTMLElement | null;
@@ -646,22 +661,23 @@ export function MapaGps() {
                       handleCurtirUsuario(usuario);
                       return;
                     }
-                    setUsuarioDetalheAberto(usuario);
+                    focarEmUsuario(usuario, coord);
                   },
                 }}
               />
               <Marker
                 position={[coord.lat, coord.lng]}
                 icon={iconeAv}
+                zIndexOffset={estaFocado ? 10 : 0}
                 eventHandlers={{
-                  click: () => setUsuarioDetalheAberto(usuario),
+                  click: () => focarEmUsuario(usuario, coord),
                 }}
               />
             </div>
           )
         )}
 
-        <CentralizarMapa coords={coords} />
+        <CentralizarMapa alvo={centroAtivoMapa} />
       </MapContainer>
 
       <div className="fixed top-3 left-3 z-20 flex flex-col items-start gap-1.5 pointer-events-none max-w-[calc(100vw-24px)]">
@@ -781,6 +797,16 @@ export function MapaGps() {
       </div>
 
       <div className="fixed bottom-6 right-6 z-20 flex flex-wrap items-center justify-end gap-2.5">
+        {focoCoordenadas && (
+          <button
+            type="button"
+            onClick={voltarParaMeuAvatar}
+            className="rounded-full bg-emerald-600/90 px-4 py-3 text-sm font-semibold text-white shadow-lg hover:bg-emerald-500 backdrop-blur-[2px]"
+          >
+            Meu avatar
+          </button>
+        )}
+
         <button
           type="button"
           onClick={() => setRankingAberto(true)}
