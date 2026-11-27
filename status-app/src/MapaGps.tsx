@@ -231,14 +231,14 @@ function carregarConfigJogo(): ConfigJogoUsuario {
   }
 }
 
-function CentralizarMapa({ coords }: { coords: Coordenadas }) {
+function CentralizarMapa({ alvo }: { alvo: Coordenadas }) {
   const map = useMap();
 
   useEffect(() => {
-    map.flyTo([coords.lat, coords.lng], map.getZoom(), {
+    map.flyTo([alvo.lat, alvo.lng], map.getZoom(), {
       duration: 0.6,
     });
-  }, [coords, map]);
+  }, [alvo.lat, alvo.lng, map]);
 
   return null;
 }
@@ -311,6 +311,27 @@ export function MapaGps() {
       setStatusGps('GPS indisponível neste navegador');
       return;
     }
+
+  const [focoCoordenadas, setFocoCoordenadas] = useState<Coordenadas | null>(
+    null
+  );
+  const [avatarFocadoId, setAvatarFocadoId] = useState<string | null>(null);
+
+  const centroAtivoMapa = focoCoordenadas ?? coords;
+
+  const focarEmUsuario = (
+    usuario: UsuarioSimulado,
+    coordUsuario: Coordenadas
+  ) => {
+    setFocoCoordenadas({ lat: coordUsuario.lat, lng: coordUsuario.lng });
+    setAvatarFocadoId(usuario.id);
+    setUsuarioDetalheAberto(usuario);
+  };
+
+  const voltarParaMeuAvatar = () => {
+    setFocoCoordenadas(null);
+    setAvatarFocadoId(null);
+  };
 
     const watchId = navigator.geolocation.watchPosition(
       (posicao) => {
