@@ -140,6 +140,17 @@ function normalizarPosicoes(
   };
 }
 
+function salvarQuartoLocal(chaveUsuario: string, estado: EstadoQuarto) {
+  try {
+    localStorage.setItem(
+      `status_app_quarto_${chaveUsuario}`,
+      JSON.stringify(estado)
+    );
+  } catch {
+    // ignora falha de armazenamento local
+  }
+}
+
 function carregarQuarto(chaveUsuario: string): EstadoQuarto {
   try {
     const bruto = localStorage.getItem(`status_app_quarto_${chaveUsuario}`);
@@ -208,14 +219,7 @@ export function MapaGame({ aoVoltarGps, nomeUsuario = 'Status' }: MapaGameProps)
   }, [chaveUsuario]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        `status_app_quarto_${chaveUsuario}`,
-        JSON.stringify(quarto)
-      );
-    } catch {
-      // ignora erro de quota do localStorage em imagens grandes
-    }
+    salvarQuartoLocal(chaveUsuario, quarto);
   }, [chaveUsuario, quarto]);
 
   const paredeAtual =
@@ -312,27 +316,35 @@ export function MapaGame({ aoVoltarGps, nomeUsuario = 'Status' }: MapaGameProps)
   };
 
   const alternarItem = (tipo: TipoItemQuarto3D) => {
-    setQuarto((atual) => ({
-      ...atual,
-      itens: {
-        ...atual.itens,
-        [tipo]: !atual.itens[tipo],
-      },
-    }));
+    setQuarto((atual) => {
+      const proximo: EstadoQuarto = {
+        ...atual,
+        itens: {
+          ...atual.itens,
+          [tipo]: !atual.itens[tipo],
+        },
+      };
+      salvarQuartoLocal(chaveUsuario, proximo);
+      return proximo;
+    });
   };
 
   const alternarDecoracaoEstante = (chave: keyof DecoracaoEstante3D) => {
-    setQuarto((atual) => ({
-      ...atual,
-      itens: {
-        ...atual.itens,
-        estante: true,
-      },
-      estante: {
-        ...atual.estante,
-        [chave]: !atual.estante[chave],
-      },
-    }));
+    setQuarto((atual) => {
+      const proximo: EstadoQuarto = {
+        ...atual,
+        itens: {
+          ...atual.itens,
+          estante: true,
+        },
+        estante: {
+          ...atual.estante,
+          [chave]: !atual.estante[chave],
+        },
+      };
+      salvarQuartoLocal(chaveUsuario, proximo);
+      return proximo;
+    });
   };
 
   const moverItem = (dx: number, dz: number) => {
@@ -341,7 +353,7 @@ export function MapaGame({ aoVoltarGps, nomeUsuario = 'Status' }: MapaGameProps)
         x: 0,
         z: 0,
       };
-      return {
+      const proximo: EstadoQuarto = {
         ...atual,
         posicoesItens: {
           ...atual.posicoesItens,
@@ -351,24 +363,34 @@ export function MapaGame({ aoVoltarGps, nomeUsuario = 'Status' }: MapaGameProps)
           },
         },
       };
+      salvarQuartoLocal(chaveUsuario, proximo);
+      return proximo;
     });
   };
 
   const resetarPosicaoItem = () => {
-    setQuarto((atual) => ({
-      ...atual,
-      posicoesItens: {
-        ...atual.posicoesItens,
-        [itemSelecionadoMover]: { ...POSICOES_INICIAIS[itemSelecionadoMover] },
-      },
-    }));
+    setQuarto((atual) => {
+      const proximo: EstadoQuarto = {
+        ...atual,
+        posicoesItens: {
+          ...atual.posicoesItens,
+          [itemSelecionadoMover]: { ...POSICOES_INICIAIS[itemSelecionadoMover] },
+        },
+      };
+      salvarQuartoLocal(chaveUsuario, proximo);
+      return proximo;
+    });
   };
 
   const selecionarCorParede = (corParedeId: string) => {
-    setQuarto((atual) => ({
-      ...atual,
-      corParedeId,
-    }));
+    setQuarto((atual) => {
+      const proximo: EstadoQuarto = {
+        ...atual,
+        corParedeId,
+      };
+      salvarQuartoLocal(chaveUsuario, proximo);
+      return proximo;
+    });
   };
 
   const handleUploadFotoPoster = (evento: ChangeEvent<HTMLInputElement>) => {
@@ -378,14 +400,18 @@ export function MapaGame({ aoVoltarGps, nomeUsuario = 'Status' }: MapaGameProps)
     const leitor = new FileReader();
     leitor.onload = () => {
       if (typeof leitor.result === 'string') {
-        setQuarto((atual) => ({
-          ...atual,
-          fotoPoster: leitor.result as string,
-          itens: {
-            ...atual.itens,
-            poster: true,
-          },
-        }));
+        setQuarto((atual) => {
+          const proximo: EstadoQuarto = {
+            ...atual,
+            fotoPoster: leitor.result as string,
+            itens: {
+              ...atual.itens,
+              poster: true,
+            },
+          };
+          salvarQuartoLocal(chaveUsuario, proximo);
+          return proximo;
+        });
       }
     };
     leitor.readAsDataURL(arquivo);
@@ -394,61 +420,54 @@ export function MapaGame({ aoVoltarGps, nomeUsuario = 'Status' }: MapaGameProps)
   const aplicarUrlPoster = () => {
     const limpa = urlPoster.trim();
     if (!limpa) return;
-    setQuarto((atual) => ({
-      ...atual,
-      fotoPoster: limpa,
-      itens: {
-        ...atual.itens,
-        poster: true,
-      },
-    }));
-  };
-
-  const handleUploadGifTv = (evento: ChangeEvent<HTMLInputElement>) => {
-    const arquivo = evento.target.files?.[0];
-    if (!arquivo) return;
-
-    const leitor = new FileReader();
-    leitor.onload = () => {
-      if (typeof leitor.result === 'string') {
-        setQuarto((atual) => ({
-          ...atual,
-          gifTv: leitor.result as string,
-          itens: {
-            ...atual.itens,
-            tv: true,
-          },
-        }));
-      }
-    };
-    leitor.readAsDataURL(arquivo);
+    setQuarto((atual) => {
+      const proximo: EstadoQuarto = {
+        ...atual,
+        fotoPoster: limpa,
+        itens: {
+          ...atual.itens,
+          poster: true,
+        },
+      };
+      salvarQuartoLocal(chaveUsuario, proximo);
+      return proximo;
+    });
   };
 
   const aplicarUrlGifTv = () => {
     const limpa = urlGifTv.trim();
     if (!limpa) return;
-    setQuarto((atual) => ({
-      ...atual,
-      gifTv: limpa,
-      itens: {
-        ...atual.itens,
-        tv: true,
-      },
-    }));
+    setQuarto((atual) => {
+      const proximo: EstadoQuarto = {
+        ...atual,
+        gifTv: limpa,
+        itens: {
+          ...atual.itens,
+          tv: true,
+        },
+      };
+      salvarQuartoLocal(chaveUsuario, proximo);
+      return proximo;
+    });
   };
 
   const limparGifTv = () => {
     setUrlGifTv('');
-    setQuarto((atual) => ({
-      ...atual,
-      gifTv: '',
-    }));
+    setQuarto((atual) => {
+      const proximo: EstadoQuarto = {
+        ...atual,
+        gifTv: '',
+      };
+      salvarQuartoLocal(chaveUsuario, proximo);
+      return proximo;
+    });
   };
 
   const limparQuarto = () => {
     setQuarto(ESTADO_VAZIO);
     setUrlPoster('');
     setUrlGifTv('');
+    salvarQuartoLocal(chaveUsuario, ESTADO_VAZIO);
   };
 
   const posAtualSelecionado =
@@ -690,7 +709,7 @@ export function MapaGame({ aoVoltarGps, nomeUsuario = 'Status' }: MapaGameProps)
           <div className="space-y-1 border-t border-white/10 pt-1.5">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-semibold text-slate-200">
-                GIF na tela da TV
+                GIF na tela da TV (URL)
               </span>
               {quarto.gifTv && (
                 <button
@@ -702,21 +721,12 @@ export function MapaGame({ aoVoltarGps, nomeUsuario = 'Status' }: MapaGameProps)
                 </button>
               )}
             </div>
-            <label className="block cursor-pointer rounded-lg border border-dashed border-slate-600/70 bg-slate-900/55 px-2 py-1 text-center text-[10px] text-sky-200 hover:border-sky-400">
-              Escolher arquivo .gif
-              <input
-                type="file"
-                accept="image/gif,.gif"
-                onChange={handleUploadGifTv}
-                className="hidden"
-              />
-            </label>
             <div className="flex gap-1">
               <input
                 type="text"
                 value={urlGifTv}
                 onChange={(e) => setUrlGifTv(e.target.value)}
-                placeholder="Link do GIF..."
+                placeholder="https://...gif"
                 className="w-full rounded-lg border border-slate-700/70 bg-slate-900/70 px-2 py-1 text-[10px] text-white placeholder-slate-400 focus:border-sky-400 focus:outline-none"
               />
               <button
@@ -812,7 +822,10 @@ export function MapaGame({ aoVoltarGps, nomeUsuario = 'Status' }: MapaGameProps)
 
         <button
           type="button"
-          onClick={aoVoltarGps}
+          onClick={() => {
+            salvarQuartoLocal(chaveUsuario, quarto);
+            aoVoltarGps();
+          }}
           className="rounded-full bg-white/90 px-3.5 py-2 text-[11px] font-semibold text-slate-900 shadow-lg hover:bg-white shrink-0"
         >
           Voltar
