@@ -1,6 +1,13 @@
-import { useEffect, useState, type ChangeEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type PointerEvent,
+} from 'react';
 import {
   AvatarStatus,
+  OPCOES_ACESSORIOS_AVATAR,
   OPCOES_BARBA_MICAH,
   OPCOES_BOCA_MICAH,
   OPCOES_CABELO_MICAH,
@@ -9,7 +16,6 @@ import {
   OPCOES_COR_FUNDO_MICAH,
   OPCOES_COR_OCULOS_MICAH,
   OPCOES_COR_PELE_MICAH,
-  OPCOES_OCULOS_MICAH,
   VISUAL_PADRAO_MICAH,
   type ConfigVisualAvatar,
   type EstiloAvatar,
@@ -19,6 +25,10 @@ import {
 export interface VisualAvatarComBanner extends ConfigVisualAvatar {
   bannerParede?: string;
   imagemBanner?: string;
+  acessorio?: string;
+  corAcessorio?: string;
+  acessorioX?: number;
+  acessorioY?: number;
 }
 
 export interface ConfigJogoUsuario {
@@ -26,6 +36,7 @@ export interface ConfigJogoUsuario {
   vibracaoAtiva: boolean;
   temaAvatar: EstiloAvatar;
   visualAvatar?: VisualAvatarComBanner;
+  isPremium?: boolean;
 }
 
 interface MenuPerfilProps {
@@ -41,6 +52,7 @@ interface SeletorSetasProps {
   opcoes: OpcaoSelecaoMicah[];
   valorAtual: string;
   onChange: (novoId: string) => void;
+  isOpcaoPremium?: (opcao: OpcaoSelecaoMicah) => boolean;
 }
 
 const PAPEIS_PAREDE_BANNER: (OpcaoSelecaoMicah & {
@@ -97,13 +109,53 @@ const PAPEIS_PAREDE_BANNER: (OpcaoSelecaoMicah & {
   },
 ];
 
+const LIMITE_OFFSET = 25;
+const PASSO_OFFSET = 2;
+
+function limitarOffset(valor: number): number {
+  return Math.max(-LIMITE_OFFSET, Math.min(LIMITE_OFFSET, Math.round(valor)));
+}
+
+function normalizarAcessorioId(id?: string): string {
+  const bruto = (id || 'none').trim();
+  if (bruto === 'squares') return 'square';
+  if (bruto === 'lenco') return 'gravata-borboleta';
+  return bruto;
+}
+
+function cabeloEhGratis(opcao?: OpcaoSelecaoMicah): boolean {
+  if (!opcao) return false;
+  if (opcao.premium === false) return true;
+  if (opcao.premium === true) return false;
+  const texto = `${opcao.id} ${opcao.rotulo}`.toLowerCase();
+  return texto.includes('fonze') || texto.includes('pixie');
+}
+
+function acessorioEhGratis(opcao?: OpcaoSelecaoMicah): boolean {
+  if (!opcao) return false;
+  if (opcao.premium === false) return true;
+  if (opcao.premium === true) return false;
+  const texto = `${opcao.id} ${opcao.rotulo}`.toLowerCase();
+  return (
+    texto.includes('sem ') ||
+    texto.includes('none') ||
+    texto.includes('oculos') ||
+    texto.includes('óculos') ||
+    texto.includes('round') ||
+    texto.includes('square') ||
+    texto.includes('bone') ||
+    texto.includes('boné')
+  );
+}
+
 function SeletorSetas({
   titulo,
   opcoes,
   valorAtual,
   onChange,
+  isOpcaoPremium,
 }: SeletorSetasProps) {
-  const normalizado = valorAtual === 'squares' ? 'square' : valorAtual;
+  const normalizado = normalizarAcessorioId(valorAtual);
   const indiceAtual = Math.max(
     0,
     opcoes.findIndex(
@@ -111,6 +163,7 @@ function SeletorSetas({
     )
   );
   const itemAtual = opcoes[indiceAtual] ?? opcoes[0];
+  const itemTemDiamante = Boolean(isOpcaoPremium?.(itemAtual));
 
   const handleAnterior = () => {
     const anterior = (indiceAtual - 1 + opcoes.length) % opcoes.length;
@@ -142,15 +195,18 @@ function SeletorSetas({
         </button>
 
         <div className="flex min-w-0 flex-1 items-center justify-center gap-1 px-1 text-center">
-          {itemAtual.hex && (
+          {itemAtual?.hex && (
             <span
               className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/30"
               style={{ backgroundColor: itemAtual.hex }}
             />
           )}
           <span className="truncate text-[10px] font-semibold text-white">
-            {itemAtual.rotulo}
+            {itemAtual?.rotulo ?? ''}
           </span>
+          {itemTemDiamante && (
+            <span className="shrink-0 text-[10px] leading-none">💎</span>
+          )}
         </div>
 
         <button
@@ -173,6 +229,11 @@ export function MenuPerfil({
   onSalvarPerfil,
   onFechar,
 }: MenuPerfilProps) {
+  const [isPremiumSimulado, setIsPremiumSimulado] = useState(
+    Boolean(configJogo.isPremium)
+  );
+  const [avisoBloqueio, setAvisoBloqueio] = useState('');
+
   const [seed, setSeed] = useState(
     configJogo.visualAvatar?.seed ?? VISUAL_PADRAO_MICAH.seed
   );
@@ -202,11 +263,23 @@ export function MenuPerfil({
   const [mouth, setMouth] = useState(
     configJogo.visualAvatar?.mouth ?? VISUAL_PADRAO_MICAH.mouth
   );
-  const [glasses, setGlasses] = useState(
-    configJogo.visualAvatar?.glasses ?? VISUAL_PADRAO_MICAH.glasses
+  const [acessorio, setAcessorio] = useState(
+    normalizarAcessorioId(
+      configJogo.visualAvatar?.acessorio ??
+        configJogo.visualAvatar?.glasses ??
+        VISUAL_PADRAO_MICAH.glasses
+    )
   );
-  const [glassesColor, setGlassesColor] = useState(
-    configJogo.visualAvatar?.glassesColor ?? VISUAL_PADRAO_MICAH.glassesColor
+  const [corAcessorio, setCorAcessorio] = useState(
+    configJogo.visualAvatar?.corAcessorio ??
+      configJogo.visualAvatar?.glassesColor ??
+      VISUAL_PADRAO_MICAH.glassesColor
+  );
+  const [acessorioX, setAcessorioX] = useState(
+    configJogo.visualAvatar?.acessorioX ?? 0
+  );
+  const [acessorioY, setAcessorioY] = useState(
+    configJogo.visualAvatar?.acessorioY ?? 0
   );
   const [facialHair, setFacialHair] = useState(
     configJogo.visualAvatar?.facialHair ?? VISUAL_PADRAO_MICAH.facialHair
@@ -216,9 +289,18 @@ export function MenuPerfil({
       VISUAL_PADRAO_MICAH.facialHairColor
   );
 
+  const arrasteRef = useRef<{
+    startX: number;
+    startY: number;
+    origX: number;
+    origY: number;
+  } | null>(null);
+
   useEffect(() => {
     if (aberto) {
       const visualSalvo = configJogo.visualAvatar;
+      setIsPremiumSimulado(Boolean(configJogo.isPremium));
+      setAvisoBloqueio('');
       setSeed(visualSalvo?.seed ?? VISUAL_PADRAO_MICAH.seed);
       setCorFundo(visualSalvo?.corFundo ?? VISUAL_PADRAO_MICAH.corFundo);
       setBannerParede(visualSalvo?.bannerParede ?? PAPEIS_PAREDE_BANNER[0].id);
@@ -229,11 +311,20 @@ export function MenuPerfil({
       setHairColor(visualSalvo?.hairColor ?? VISUAL_PADRAO_MICAH.hairColor);
       setBaseColor(visualSalvo?.baseColor ?? VISUAL_PADRAO_MICAH.baseColor);
       setMouth(visualSalvo?.mouth ?? VISUAL_PADRAO_MICAH.mouth);
-      const glassesInicial = visualSalvo?.glasses ?? VISUAL_PADRAO_MICAH.glasses;
-      setGlasses(glassesInicial === 'squares' ? 'square' : glassesInicial);
-      setGlassesColor(
-        visualSalvo?.glassesColor ?? VISUAL_PADRAO_MICAH.glassesColor
+
+      const acessorioInicial = normalizarAcessorioId(
+        visualSalvo?.acessorio ??
+          visualSalvo?.glasses ??
+          VISUAL_PADRAO_MICAH.glasses
       );
+      setAcessorio(acessorioInicial);
+      setCorAcessorio(
+        visualSalvo?.corAcessorio ??
+          visualSalvo?.glassesColor ??
+          VISUAL_PADRAO_MICAH.glassesColor
+      );
+      setAcessorioX(limitarOffset(visualSalvo?.acessorioX ?? 0));
+      setAcessorioY(limitarOffset(visualSalvo?.acessorioY ?? 0));
       setFacialHair(
         visualSalvo?.facialHair ?? VISUAL_PADRAO_MICAH.facialHair
       );
@@ -250,7 +341,10 @@ export function MenuPerfil({
     PAPEIS_PAREDE_BANNER.find((item) => item.id === bannerParede) ??
     PAPEIS_PAREDE_BANNER[0];
 
-  const visualAtual: VisualAvatarComBanner = {
+  const acessorioNormalizado = normalizarAcessorioId(acessorio);
+  const acessorioEhMovel = acessorioNormalizado !== 'none';
+
+  const visualPreview: VisualAvatarComBanner = {
     corFundo,
     bannerParede: bannerAtual.id,
     imagemBanner,
@@ -259,10 +353,50 @@ export function MenuPerfil({
     hairColor,
     baseColor,
     mouth,
-    glasses: glasses === 'squares' ? 'square' : glasses,
-    glassesColor,
+    glasses: acessorioNormalizado,
+    glassesColor: corAcessorio,
+    acessorio: acessorioNormalizado,
+    corAcessorio,
+    acessorioX: acessorioEhMovel ? acessorioX : 0,
+    acessorioY: acessorioEhMovel ? acessorioY : 0,
     facialHair,
     facialHairColor,
+  };
+
+  const handlePointerDownAvatar = (e: PointerEvent<HTMLDivElement>) => {
+    if (!acessorioEhMovel) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    arrasteRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: acessorioX,
+      origY: acessorioY,
+    };
+  };
+
+  const handlePointerMoveAvatar = (e: PointerEvent<HTMLDivElement>) => {
+    if (!arrasteRef.current || !acessorioEhMovel) return;
+    const dx = e.clientX - arrasteRef.current.startX;
+    const dy = e.clientY - arrasteRef.current.startY;
+    setAcessorioX(limitarOffset(arrasteRef.current.origX + dx * 0.65));
+    setAcessorioY(limitarOffset(arrasteRef.current.origY + dy * 0.65));
+  };
+
+  const handlePointerUpAvatar = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    arrasteRef.current = null;
+  };
+
+  const moverAcessorio = (dx: number, dy: number) => {
+    setAcessorioX((x) => limitarOffset(x + dx));
+    setAcessorioY((y) => limitarOffset(y + dy));
+  };
+
+  const resetarPosicaoAcessorio = () => {
+    setAcessorioX(0);
+    setAcessorioY(0);
   };
 
   const handleUploadImagemBanner = (evento: ChangeEvent<HTMLInputElement>) => {
@@ -274,6 +408,7 @@ export function MenuPerfil({
       if (typeof leitor.result === 'string') {
         setImagemBanner(leitor.result);
         setUrlBanner('');
+        setAvisoBloqueio('');
       }
     };
     leitor.readAsDataURL(arquivo);
@@ -283,6 +418,7 @@ export function MenuPerfil({
     const limpa = urlBanner.trim();
     if (!limpa) return;
     setImagemBanner(limpa);
+    setAvisoBloqueio('');
   };
 
   const handleLimparImagemBanner = () => {
@@ -295,9 +431,104 @@ export function MenuPerfil({
   };
 
   const handleSalvar = () => {
+    const visualSalvoAnterior = configJogo.visualAvatar;
+    const liberado = isPremiumSimulado || Boolean(configJogo.isPremium);
+
+    if (liberado) {
+      onSalvarPerfil(apelidoAtual, {
+        ...configJogo,
+        isPremium: true,
+        visualAvatar: visualPreview,
+      });
+      onFechar();
+      return;
+    }
+
+    const opcaoCabeloEscolhida = OPCOES_CABELO_MICAH.find(
+      (item) => item.id.toLowerCase() === hair.toLowerCase()
+    );
+    const cabeloAnteriorGratis =
+      visualSalvoAnterior?.hair &&
+      cabeloEhGratis(
+        OPCOES_CABELO_MICAH.find(
+          (item) =>
+            item.id.toLowerCase() === visualSalvoAnterior.hair?.toLowerCase()
+        )
+      );
+
+    const hairValido = cabeloEhGratis(opcaoCabeloEscolhida)
+      ? hair
+      : cabeloAnteriorGratis
+        ? (visualSalvoAnterior.hair as string)
+        : (OPCOES_CABELO_MICAH.find((item) => cabeloEhGratis(item))?.id ??
+          'fonze');
+
+    const opcaoAcessorioEscolhida = OPCOES_ACESSORIOS_AVATAR.find(
+      (item) => item.id.toLowerCase() === acessorioNormalizado.toLowerCase()
+    );
+    const acessorioAnteriorBruto = normalizarAcessorioId(
+      visualSalvoAnterior?.acessorio ?? visualSalvoAnterior?.glasses
+    );
+    const acessorioAnteriorGratis =
+      acessorioAnteriorBruto &&
+      acessorioEhGratis(
+        OPCOES_ACESSORIOS_AVATAR.find(
+          (item) =>
+            item.id.toLowerCase() === acessorioAnteriorBruto.toLowerCase()
+        )
+      );
+
+    const acessorioValido = acessorioEhGratis(opcaoAcessorioEscolhida)
+      ? acessorioNormalizado
+      : acessorioAnteriorGratis
+        ? acessorioAnteriorBruto
+        : 'none';
+
+    const acessorioSalvoEhMovel = acessorioValido !== 'none';
+
+    const coordXValida = acessorioSalvoEhMovel
+      ? limitarOffset(acessorioX)
+      : (visualSalvoAnterior?.acessorioX ?? 0);
+    const coordYValida = acessorioSalvoEhMovel
+      ? limitarOffset(acessorioY)
+      : (visualSalvoAnterior?.acessorioY ?? 0);
+
+    const bannerImgValida = visualSalvoAnterior?.imagemBanner ?? '';
+
+    const bloqueouAlgumItem =
+      hairValido !== hair ||
+      acessorioValido !== acessorioNormalizado ||
+      imagemBanner !== bannerImgValida;
+
+    if (bloqueouAlgumItem) {
+      setAvisoBloqueio(
+        'Itens 💎 ficaram apenas no preview: só os itens grátis foram salvos (Pacote Premium R$ 1,99).'
+      );
+    }
+
+    const visualParaSalvar: VisualAvatarComBanner = {
+      corFundo,
+      bannerParede: bannerAtual.id,
+      imagemBanner: bannerImgValida,
+      seed,
+      hair: hairValido,
+      hairColor,
+      baseColor,
+      mouth,
+      glasses: acessorioValido,
+      glassesColor: corAcessorio,
+      acessorio: acessorioValido,
+      corAcessorio,
+      acessorioX: coordXValida,
+      acessorioY: coordYValida,
+      facialHair,
+      facialHairColor,
+    };
+
     onSalvarPerfil(apelidoAtual, {
       ...configJogo,
-      visualAvatar: visualAtual,
+      isPremium: false,
+      visualAvatar: visualParaSalvar,
     });
     onFechar();
   };
@@ -306,27 +537,44 @@ export function MenuPerfil({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/40 backdrop-blur-[1px]">
-      <div className="flex h-fit max-h-[96vh] w-full max-w-2xl flex-col rounded-l-2xl border-y border-l border-white/15 bg-slate-950/65 text-white shadow-2xl backdrop-blur-[2px] overflow-hidden">
-        <div className="flex items-center justify-between border-b border-white/10 px-3 py-1.5 shrink-0 bg-slate-950/50">
-          <div>
-            <h2 className="text-xs font-bold text-white leading-tight">
-              Estúdio Micah
+      <div className="flex h-fit max-h-[96vh] w-full max-w-2xl flex-col rounded-l-2xl border-y border-l border-white/15 bg-slate-950/65 text-white shadow-2xl backdrop-blur-[2px] overflow-y-auto">
+        <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-1.5 shrink-0 bg-slate-950/50">
+          <div className="min-w-0">
+            <h2 className="text-xs font-bold text-white leading-tight truncate">
+              Editar avatar
             </h2>
-            <p className="text-[9px] text-slate-300/80 leading-tight">
-              Use &lt; e &gt; para trocar cada parte
+            <p className="text-[9px] text-slate-300/80 leading-tight truncate">
+              Use &lt; e &gt; para trocar cada parte · 💎 = preview no Pacote Premium
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onFechar}
-            aria-label="Fechar menu perfil"
-            className="rounded-lg border border-white/15 bg-slate-900/70 px-2 py-0.5 text-xs text-slate-200 hover:bg-slate-800 hover:text-white"
-          >
-            ✕
-          </button>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setIsPremiumSimulado((prev) => !prev);
+                setAvisoBloqueio('');
+              }}
+              className={`rounded-lg border px-2 py-0.5 text-[9px] font-semibold transition ${
+                isPremiumSimulado
+                  ? 'border-amber-300 bg-amber-500/25 text-amber-100'
+                  : 'border-white/15 bg-slate-900/70 text-slate-300 hover:bg-slate-800'
+              }`}
+            >
+              {isPremiumSimulado ? '💎 Premium Ativo' : '💎 Testar R$ 1,99'}
+            </button>
+
+            <button
+              type="button"
+              onClick={onFechar}
+              aria-label="Fechar menu perfil"
+              className="rounded-lg border border-white/15 bg-slate-900/70 px-2 py-0.5 text-xs text-slate-200 hover:bg-slate-800 hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
-        {/* Retângulo banner atrás do avatar com espaçamento interno padrão */}
         <div
           className="relative flex shrink-0 flex-col items-center justify-center border-b border-white/10 px-3 py-2.5 overflow-hidden"
           style={
@@ -348,11 +596,19 @@ export function MenuPerfil({
           <div className="pointer-events-none absolute inset-0 bg-slate-950/30" />
 
           <div className="relative z-10 flex flex-col items-center gap-1.5">
-            <div className="flex items-center justify-center">
+            <div
+              onPointerDown={handlePointerDownAvatar}
+              onPointerMove={handlePointerMoveAvatar}
+              onPointerUp={handlePointerUpAvatar}
+              onPointerCancel={handlePointerUpAvatar}
+              className={`flex items-center justify-center touch-none ${
+                acessorioEhMovel ? 'cursor-move' : ''
+              }`}
+            >
               <AvatarStatus
                 nome={nomePreview}
                 estilo={configJogo.temaAvatar}
-                visual={visualAtual}
+                visual={visualPreview}
               />
             </div>
 
@@ -366,13 +622,20 @@ export function MenuPerfil({
           </div>
         </div>
 
-        <div className="px-3 py-2 space-y-2">
+        <div className="overflow-y-auto px-3 py-2 space-y-2">
+          {avisoBloqueio && (
+            <div className="rounded-lg border border-amber-400/40 bg-amber-950/50 px-2.5 py-1 text-[10px] text-amber-200">
+              {avisoBloqueio}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-x-2.5 gap-y-1">
             <SeletorSetas
               titulo="Cabelo"
               opcoes={OPCOES_CABELO_MICAH}
               valorAtual={hair}
               onChange={setHair}
+              isOpcaoPremium={(opcao) => !cabeloEhGratis(opcao)}
             />
 
             <SeletorSetas
@@ -397,18 +660,68 @@ export function MenuPerfil({
             />
 
             <SeletorSetas
-              titulo="Óculos"
-              opcoes={OPCOES_OCULOS_MICAH}
-              valorAtual={glasses}
-              onChange={setGlasses}
+              titulo="Acessórios"
+              opcoes={OPCOES_ACESSORIOS_AVATAR}
+              valorAtual={acessorioNormalizado}
+              onChange={(novoId) => {
+                setAcessorio(normalizarAcessorioId(novoId));
+                setAcessorioX(0);
+                setAcessorioY(0);
+              }}
+              isOpcaoPremium={(opcao) => !acessorioEhGratis(opcao)}
             />
 
             <SeletorSetas
-              titulo="Cor dos óculos"
+              titulo="Cor do acessório"
               opcoes={OPCOES_COR_OCULOS_MICAH}
-              valorAtual={glassesColor}
-              onChange={setGlassesColor}
+              valorAtual={corAcessorio}
+              onChange={setCorAcessorio}
             />
+
+            {acessorioEhMovel && (
+              <div className="col-span-2 flex items-center justify-between gap-1 rounded-lg border border-white/10 bg-slate-900/60 px-2 py-1">
+                <span className="text-[10px] font-semibold text-slate-200">
+                  Mover acessório (X:{acessorioX} Y:{acessorioY})
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => moverAcessorio(-PASSO_OFFSET, 0)}
+                    className="rounded border border-white/15 bg-slate-800 px-2 py-0.5 text-[10px] font-bold hover:border-purple-400"
+                  >
+                    ←
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moverAcessorio(0, -PASSO_OFFSET)}
+                    className="rounded border border-white/15 bg-slate-800 px-2 py-0.5 text-[10px] font-bold hover:border-purple-400"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moverAcessorio(0, PASSO_OFFSET)}
+                    className="rounded border border-white/15 bg-slate-800 px-2 py-0.5 text-[10px] font-bold hover:border-purple-400"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moverAcessorio(PASSO_OFFSET, 0)}
+                    className="rounded border border-white/15 bg-slate-800 px-2 py-0.5 text-[10px] font-bold hover:border-purple-400"
+                  >
+                    →
+                  </button>
+                  <button
+                    type="button"
+                    onClick={resetarPosicaoAcessorio}
+                    className="rounded border border-white/15 bg-slate-800 px-1.5 py-0.5 text-[9px] text-slate-300 hover:text-white"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+            )}
 
             <SeletorSetas
               titulo="Barba"
@@ -442,10 +755,12 @@ export function MenuPerfil({
             />
           </div>
 
-          {/* Opção compacta de imagem no banner */}
           <div className="space-y-1 rounded-lg border border-white/10 bg-slate-900/55 px-2 py-1.5">
             <div className="flex items-center justify-between text-[10px] font-semibold text-slate-200 leading-none">
-              <span>Imagem no banner</span>
+              <span className="flex items-center gap-1">
+                <span>Imagem no banner</span>
+                <span>💎</span>
+              </span>
               {temImagemBanner && (
                 <button
                   type="button"

@@ -57,6 +57,8 @@ const POSICOES_INICIAIS: Record<TipoItemQuarto3D, PosicaoItem3D> = {
   tv: { x: 2.9, z: -0.6 },
   rack: { x: 2.65, z: -0.6 },
   poster: { x: -2.9, z: -0.6 },
+  porta: { x: -1.35, z: -2.9 },
+  janela: { x: 1.25, z: -2.9 },
 };
 
 const ESTADO_VAZIO: EstadoQuarto = {
@@ -67,6 +69,8 @@ const ESTADO_VAZIO: EstadoQuarto = {
     poster: false,
     estante: false,
     rack: false,
+    porta: false,
+    janela: false,
   },
   posicoesItens: {
     cama: { ...POSICOES_INICIAIS.cama },
@@ -74,6 +78,8 @@ const ESTADO_VAZIO: EstadoQuarto = {
     tv: { ...POSICOES_INICIAIS.tv },
     rack: { ...POSICOES_INICIAIS.rack },
     poster: { ...POSICOES_INICIAIS.poster },
+    porta: { ...POSICOES_INICIAIS.porta },
+    janela: { ...POSICOES_INICIAIS.janela },
   },
   estante: {
     livros: false,
@@ -137,6 +143,8 @@ function normalizarPosicoes(
     tv: lerItem('tv'),
     rack: lerItem('rack'),
     poster: lerItem('poster'),
+    porta: lerItem('porta'),
+    janela: lerItem('janela'),
   };
 }
 
@@ -165,6 +173,8 @@ function carregarQuarto(chaveUsuario: string): EstadoQuarto {
         poster: Boolean(parsed?.itens?.poster),
         estante: Boolean(parsed?.itens?.estante),
         rack: Boolean(parsed?.itens?.rack),
+        porta: Boolean(parsed?.itens?.porta),
+        janela: Boolean(parsed?.itens?.janela),
       },
       posicoesItens: normalizarPosicoes(parsed?.posicoesItens),
       estante: {
@@ -185,6 +195,8 @@ const ROTULO_ITEM: Record<TipoItemQuarto3D, string> = {
   tv: 'TV',
   rack: 'Rack + PS5',
   poster: 'Pôster',
+  porta: 'Porta',
+  janela: 'Janela',
 };
 
 export function MapaGame({ aoVoltarGps, nomeUsuario = 'Status' }: MapaGameProps) {
@@ -475,7 +487,6 @@ export function MapaGame({ aoVoltarGps, nomeUsuario = 'Status' }: MapaGameProps)
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-slate-950 text-white select-none">
-      {/* Área interativa de rotação 360° e zoom do quarto */}
       <div
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -491,7 +502,6 @@ export function MapaGame({ aoVoltarGps, nomeUsuario = 'Status' }: MapaGameProps)
         <Quarto3D dados={dados3D as DadosQuarto3D} />
       </div>
 
-      {/* Topo organizado para telas estreitas de 360px */}
       <div className="pointer-events-none fixed top-3 inset-x-3 z-20 flex flex-col gap-1.5">
         <div className="flex items-center justify-between gap-2">
           <span className="pointer-events-auto truncate rounded-full bg-slate-950/65 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-indigo-100 border border-white/15 backdrop-blur-[2px]">
@@ -512,7 +522,6 @@ export function MapaGame({ aoVoltarGps, nomeUsuario = 'Status' }: MapaGameProps)
         </div>
       </div>
 
-      {/* Gaveta de decoração compacta e semitransparente */}
       {painelAberto && (
         <div className="fixed top-28 right-2.5 z-30 max-h-[58vh] overflow-y-auto w-60 rounded-2xl border border-white/15 bg-slate-950/55 p-2.5 text-[11px] text-white shadow-xl backdrop-blur-[2px] space-y-2">
           <div>
@@ -546,9 +555,31 @@ export function MapaGame({ aoVoltarGps, nomeUsuario = 'Status' }: MapaGameProps)
 
           <div>
             <div className="text-[10px] font-semibold text-slate-200 mb-1">
-              Móveis e itens do quarto
+              Móveis, porta e janela
             </div>
             <div className="grid grid-cols-3 gap-1">
+              <button
+                type="button"
+                onClick={() => alternarItem('porta')}
+                className={`rounded-lg border py-1 text-[10px] font-semibold transition ${
+                  quarto.itens.porta
+                    ? 'border-amber-400 bg-amber-600/40 text-amber-100'
+                    : 'border-slate-700/60 bg-slate-900/55 text-slate-300 hover:text-white'
+                }`}
+              >
+                🚪 Porta
+              </button>
+              <button
+                type="button"
+                onClick={() => alternarItem('janela')}
+                className={`rounded-lg border py-1 text-[10px] font-semibold transition ${
+                  quarto.itens.janela
+                    ? 'border-sky-400 bg-sky-600/40 text-sky-100'
+                    : 'border-slate-700/60 bg-slate-900/55 text-slate-300 hover:text-white'
+                }`}
+              >
+                🪟 Janela
+              </button>
               <button
                 type="button"
                 onClick={() => alternarItem('tv')}
@@ -607,7 +638,6 @@ export function MapaGame({ aoVoltarGps, nomeUsuario = 'Status' }: MapaGameProps)
             </div>
           </div>
 
-          {/* Conteúdo dentro da estante */}
           <div className="space-y-1 border-t border-white/10 pt-1.5">
             <div className="text-[10px] font-semibold text-slate-200">
               Na estante (atrás da cama)
@@ -638,7 +668,6 @@ export function MapaGame({ aoVoltarGps, nomeUsuario = 'Status' }: MapaGameProps)
             </div>
           </div>
 
-          {/* Mover qualquer item de lugar */}
           <div className="space-y-1 border-t border-white/10 pt-1.5">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-semibold text-slate-200">
@@ -782,7 +811,6 @@ export function MapaGame({ aoVoltarGps, nomeUsuario = 'Status' }: MapaGameProps)
         </div>
       )}
 
-      {/* Barra inferior compacta com 360°, zoom (- / +) e voltar */}
       <div className="fixed bottom-4 inset-x-3 z-20 flex items-center justify-between gap-1.5">
         <div className="flex items-center gap-1">
           <button

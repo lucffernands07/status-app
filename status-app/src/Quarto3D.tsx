@@ -5,7 +5,14 @@ import { OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { decompressFrames, parseGIF } from 'gifuct-js';
 
-export type TipoItemQuarto3D = 'tv' | 'cama' | 'poster' | 'estante' | 'rack';
+export type TipoItemQuarto3D =
+  | 'tv'
+  | 'cama'
+  | 'poster'
+  | 'estante'
+  | 'rack'
+  | 'porta'
+  | 'janela';
 
 export interface PosicaoItem3D {
   x: number;
@@ -51,7 +58,76 @@ const POSICOES_PADRAO_ITENS: Record<TipoItemQuarto3D, PosicaoItem3D> = {
   tv: { x: 2.9, z: -0.6 },
   rack: { x: 2.65, z: -0.6 },
   poster: { x: -2.9, z: -0.6 },
+  porta: { x: -1.35, z: -2.9 },
+  janela: { x: 1.25, z: -2.9 },
 };
+
+function rotacaoPorPosicao(pos: PosicaoItem3D): [number, number, number] {
+  if (pos.x <= -2.55) return [0, Math.PI / 2, 0];
+  if (pos.x >= 2.55) return [0, -Math.PI / 2, 0];
+  return [0, 0, 0];
+}
+
+function PortaNoQuarto({ pos }: { pos: PosicaoItem3D }) {
+  const rotacao = rotacaoPorPosicao(pos);
+
+  return (
+    <group position={[pos.x, 0, pos.z]} rotation={rotacao}>
+      <mesh position={[0, 1.05, 0.02]} castShadow receiveShadow>
+        <boxGeometry args={[1.04, 2.1, 0.08]} />
+        <meshStandardMaterial color="#3f2716" roughness={0.7} />
+      </mesh>
+      <mesh position={[0, 1.02, 0.04]} castShadow receiveShadow>
+        <boxGeometry args={[0.9, 2.0, 0.06]} />
+        <meshStandardMaterial color="#854d27" roughness={0.6} />
+      </mesh>
+      <mesh position={[0.34, 1.0, 0.09]} castShadow>
+        <sphereGeometry args={[0.045, 12, 12]} />
+        <meshStandardMaterial color="#eab308" metalness={0.6} roughness={0.3} />
+      </mesh>
+    </group>
+  );
+}
+
+function JanelaNoQuarto({ pos }: { pos: PosicaoItem3D }) {
+  const rotacao = rotacaoPorPosicao(pos);
+
+  return (
+    <group position={[pos.x, 0, pos.z]} rotation={rotacao}>
+      <mesh position={[0, 2.15, 0.03]} castShadow>
+        <boxGeometry args={[1.56, 0.1, 0.1]} />
+        <meshStandardMaterial color="#e2e8f0" roughness={0.45} />
+      </mesh>
+      <mesh position={[0, 1.05, 0.03]} castShadow>
+        <boxGeometry args={[1.62, 0.1, 0.12]} />
+        <meshStandardMaterial color="#e2e8f0" roughness={0.45} />
+      </mesh>
+      <mesh position={[-0.73, 1.6, 0.03]} castShadow>
+        <boxGeometry args={[0.1, 1.02, 0.1]} />
+        <meshStandardMaterial color="#e2e8f0" roughness={0.45} />
+      </mesh>
+      <mesh position={[0.73, 1.6, 0.03]} castShadow>
+        <boxGeometry args={[0.1, 1.02, 0.1]} />
+        <meshStandardMaterial color="#e2e8f0" roughness={0.45} />
+      </mesh>
+      <mesh position={[0, 1.6, 0.025]}>
+        <planeGeometry args={[1.38, 0.94]} />
+        <meshStandardMaterial
+          color="#7dd3fc"
+          transparent
+          opacity={0.55}
+          roughness={0.15}
+          metalness={0.2}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      <mesh position={[0, 1.6, 0.04]}>
+        <boxGeometry args={[0.04, 0.94, 0.05]} />
+        <meshStandardMaterial color="#cbd5e1" roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
 
 function ParedeDinamica({ posicao, tamanho, cor }: ParedeDinamicaProps) {
   const matRef = useRef<THREE.MeshStandardMaterial | null>(null);
@@ -461,43 +537,35 @@ function TvNaParede({
 function RackComPs5({ pos }: { pos: PosicaoItem3D }) {
   return (
     <group position={[pos.x, 0, pos.z]} rotation={[0, -Math.PI / 2, 0]}>
-      {/* Corpo do rack */}
       <mesh position={[0, 0.3, 0]} castShadow receiveShadow>
         <boxGeometry args={[1.9, 0.5, 0.45]} />
         <meshStandardMaterial color="#1e293b" roughness={0.6} />
       </mesh>
-      {/* Nicho interno */}
       <mesh position={[0, 0.26, 0.03]}>
         <boxGeometry args={[1.68, 0.24, 0.42]} />
         <meshStandardMaterial color="#0f172a" roughness={0.8} />
       </mesh>
 
-      {/* PS5 em pé sobre o rack */}
       <group position={[-0.45, 0.55, 0]}>
-        {/* Núcleo preto */}
         <mesh position={[0, 0.24, 0]} castShadow>
           <boxGeometry args={[0.14, 0.48, 0.26]} />
           <meshStandardMaterial color="#090d16" roughness={0.3} metalness={0.5} />
         </mesh>
-        {/* Placa lateral esquerda branca */}
         <mesh position={[-0.085, 0.24, 0.015]} castShadow>
           <boxGeometry args={[0.025, 0.5, 0.29]} />
           <meshStandardMaterial color="#f8fafc" roughness={0.25} />
         </mesh>
-        {/* Placa lateral direita branca */}
         <mesh position={[0.085, 0.24, -0.015]} castShadow>
           <boxGeometry args={[0.025, 0.5, 0.29]} />
           <meshStandardMaterial color="#f8fafc" roughness={0.25} />
         </mesh>
       </group>
 
-      {/* Controle DualSense ao lado do PS5 */}
       <group position={[0.25, 0.59, 0.04]} rotation={[0, 0.25, 0]}>
         <mesh castShadow>
           <boxGeometry args={[0.22, 0.07, 0.14]} />
           <meshStandardMaterial color="#f8fafc" roughness={0.35} />
         </mesh>
-        {/* Detalhe escuro central */}
         <mesh position={[0, 0.02, 0.02]}>
           <boxGeometry args={[0.1, 0.04, 0.11]} />
           <meshStandardMaterial color="#1e293b" roughness={0.5} />
@@ -516,7 +584,6 @@ function EstanteAtrasCama({
 }) {
   return (
     <group position={[pos.x, 0, pos.z]} rotation={[0, Math.PI, 0]}>
-      {/* Laterais da estante */}
       <mesh position={[-0.78, 0.9, 0]} castShadow receiveShadow>
         <boxGeometry args={[0.08, 1.8, 0.36]} />
         <meshStandardMaterial color="#5c3a21" roughness={0.7} />
@@ -525,13 +592,11 @@ function EstanteAtrasCama({
         <boxGeometry args={[0.08, 1.8, 0.36]} />
         <meshStandardMaterial color="#5c3a21" roughness={0.7} />
       </mesh>
-      {/* Fundo leve */}
       <mesh position={[0, 0.9, -0.16]} receiveShadow>
         <boxGeometry args={[1.5, 1.8, 0.03]} />
         <meshStandardMaterial color="#3f2716" roughness={0.85} />
       </mesh>
 
-      {/* 4 Prateleiras (estante vazia por padrão) */}
       {[0.12, 0.62, 1.12, 1.62].map((y) => (
         <mesh key={y} position={[0, y, 0]} castShadow receiveShadow>
           <boxGeometry args={[1.5, 0.06, 0.34]} />
@@ -539,7 +604,6 @@ function EstanteAtrasCama({
         </mesh>
       ))}
 
-      {/* Livros opcionais */}
       {decoracao.livros && (
         <group>
           <mesh position={[-0.45, 0.28, 0.02]} castShadow>
@@ -565,20 +629,16 @@ function EstanteAtrasCama({
         </group>
       )}
 
-      {/* Objetos decorativos opcionais */}
       {decoracao.objetos && (
         <group>
-          {/* Vaso / esfera decorativa */}
           <mesh position={[0.38, 0.26, 0.02]} castShadow>
             <cylinderGeometry args={[0.08, 0.06, 0.24, 16]} />
             <meshStandardMaterial color="#38bdf8" roughness={0.35} />
           </mesh>
-          {/* Cubo / troféu na prateleira superior */}
           <mesh position={[-0.36, 1.26, 0.02]} castShadow>
             <boxGeometry args={[0.18, 0.18, 0.18]} />
             <meshStandardMaterial color="#f59e0b" roughness={0.4} metalness={0.3} />
           </mesh>
-          {/* Planta / esfera no topo */}
           <mesh position={[0.25, 1.76, 0.02]} castShadow>
             <sphereGeometry args={[0.11, 16, 16]} />
             <meshStandardMaterial color="#22c55e" roughness={0.7} />
@@ -665,6 +725,14 @@ export function Quarto3D({ dados }: Quarto3DProps) {
           <meshStandardMaterial color={dados.corParedeBorda} roughness={0.6} />
         </mesh>
 
+        {dados.itens.porta && (
+          <PortaNoQuarto pos={posicoes.porta ?? POSICOES_PADRAO_ITENS.porta} />
+        )}
+        {dados.itens.janela && (
+          <JanelaNoQuarto
+            pos={posicoes.janela ?? POSICOES_PADRAO_ITENS.janela}
+          />
+        )}
         {dados.itens.poster && (
           <PosterComFoto
             fotoUrl={dados.fotoPoster}

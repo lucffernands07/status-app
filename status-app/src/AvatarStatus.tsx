@@ -10,6 +10,19 @@ export type EstiloAvatar =
   | 'mago'
   | 'fera';
 
+export type TipoAcessorioAvatar =
+  | 'none'
+  | 'round'
+  | 'square'
+  | 'bone'
+  | 'brincos'
+  | 'panos-cabeca'
+  | 'gravata-borboleta'
+  | 'gravata-normal'
+  | 'fone'
+  | 'piercing'
+  | 'piercing-duplo';
+
 export interface ConfigVisualAvatar {
   corFundo?: string;
   variante?: string;
@@ -21,6 +34,10 @@ export interface ConfigVisualAvatar {
   eyebrows?: string;
   glasses?: string;
   glassesColor?: string;
+  acessorio?: string;
+  corAcessorio?: string;
+  acessorioX?: number;
+  acessorioY?: number;
   facialHair?: string;
   facialHairColor?: string;
 }
@@ -29,17 +46,18 @@ export interface OpcaoSelecaoMicah {
   id: string;
   rotulo: string;
   hex?: string;
+  premium?: boolean;
 }
 
 export const OPCOES_CABELO_MICAH: OpcaoSelecaoMicah[] = [
-  { id: 'none', rotulo: 'Sem cabelo' },
-  { id: 'fonze', rotulo: 'Fonze' },
-  { id: 'dougFunny', rotulo: 'Doug Funny' },
-  { id: 'pixie', rotulo: 'Pixie' },
-  { id: 'full', rotulo: 'Cheio' },
-  { id: 'dannyPhantom', rotulo: 'Danny Phantom' },
-  { id: 'mrClean', rotulo: 'Careca / Raspa' },
-  { id: 'turban', rotulo: 'Turbante' },
+  { id: 'none', rotulo: 'Sem cabelo', premium: true },
+  { id: 'fonze', rotulo: 'Fonze', premium: false },
+  { id: 'dougFunny', rotulo: 'Doug Funny', premium: true },
+  { id: 'pixie', rotulo: 'Pixie', premium: false },
+  { id: 'full', rotulo: 'Cheio', premium: true },
+  { id: 'dannyPhantom', rotulo: 'Danny Phantom', premium: true },
+  { id: 'mrClean', rotulo: 'Careca / Raspa', premium: true },
+  { id: 'turban', rotulo: 'Turbante', premium: true },
 ];
 
 export const OPCOES_COR_CABELO_MICAH: OpcaoSelecaoMicah[] = [
@@ -67,11 +85,21 @@ export const OPCOES_BOCA_MICAH: OpcaoSelecaoMicah[] = [
   { id: 'nervous', rotulo: 'Nervoso' },
 ];
 
-export const OPCOES_OCULOS_MICAH: OpcaoSelecaoMicah[] = [
-  { id: 'none', rotulo: 'Sem óculos' },
-  { id: 'round', rotulo: 'Redondo' },
-  { id: 'square', rotulo: 'Quadrado' },
+export const OPCOES_ACESSORIOS_AVATAR: OpcaoSelecaoMicah[] = [
+  { id: 'none', rotulo: 'Sem acessório', premium: false },
+  { id: 'round', rotulo: 'Óculos Redondo', premium: false },
+  { id: 'square', rotulo: 'Óculos Quadrado', premium: false },
+  { id: 'bone', rotulo: 'Boné', premium: false },
+  { id: 'brincos', rotulo: 'Brincos', premium: true },
+  { id: 'panos-cabeca', rotulo: 'Panos de cabeça', premium: true },
+  { id: 'gravata-borboleta', rotulo: 'Gravata borboleta', premium: true },
+  { id: 'gravata-normal', rotulo: 'Gravata normal', premium: true },
+  { id: 'fone', rotulo: 'Fone', premium: true },
+  { id: 'piercing', rotulo: 'Piercing', premium: true },
+  { id: 'piercing-duplo', rotulo: 'Piercing duplo', premium: true },
 ];
+
+export const OPCOES_OCULOS_MICAH = OPCOES_ACESSORIOS_AVATAR;
 
 export const OPCOES_COR_OCULOS_MICAH: OpcaoSelecaoMicah[] = [
   { id: '111827', rotulo: 'Preto', hex: '#111827' },
@@ -154,6 +182,309 @@ function limparHex(cor?: string, fallback = '#6366f1'): string {
   return base.startsWith('#') ? base.slice(1) : base;
 }
 
+function normalizarCssHex(cor?: string, fallback = '#111827'): string {
+  const limpa = limparHex(cor, fallback);
+  return `#${limpa}`;
+}
+
+function normalizarIdAcessorio(id?: string): string {
+  const bruto = (id || 'none').trim();
+  if (bruto === 'squares') return 'square';
+  if (bruto === 'lenco') return 'gravata-borboleta';
+  return bruto;
+}
+
+function CamadaAcessorioExtra({
+  acessorio,
+  corHex,
+  offsetX = 0,
+  offsetY = 0,
+}: {
+  acessorio: string;
+  corHex: string;
+  offsetX?: number;
+  offsetY?: number;
+}) {
+  const transform = `translate(${offsetX}, ${offsetY})`;
+
+  if (acessorio === 'bone') {
+    return (
+      <svg
+        viewBox="0 0 100 100"
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        aria-hidden="true"
+      >
+        <g transform={transform}>
+          <path
+            d="M23 33 C22 1, 78 1, 77 33 Z"
+            fill={corHex}
+            stroke="#0f172a"
+            strokeWidth="3"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M22 33 Q52 27 83 34 Q66 39 22 33 Z"
+            fill={corHex}
+            stroke="#0f172a"
+            strokeWidth="2.5"
+            strokeLinejoin="round"
+          />
+        </g>
+      </svg>
+    );
+  }
+
+  if (acessorio === 'brincos') {
+    return (
+      <svg
+        viewBox="0 0 100 100"
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        aria-hidden="true"
+      >
+        <g transform={transform}>
+          <circle
+            cx="27"
+            cy="62"
+            r="5.5"
+            fill="none"
+            stroke="#0f172a"
+            strokeWidth="4.2"
+          />
+          <circle
+            cx="27"
+            cy="62"
+            r="5.5"
+            fill="none"
+            stroke={corHex}
+            strokeWidth="2.4"
+          />
+          <circle
+            cx="73"
+            cy="62"
+            r="5.5"
+            fill="none"
+            stroke="#0f172a"
+            strokeWidth="4.2"
+          />
+          <circle
+            cx="73"
+            cy="62"
+            r="5.5"
+            fill="none"
+            stroke={corHex}
+            strokeWidth="2.4"
+          />
+        </g>
+      </svg>
+    );
+  }
+
+  if (acessorio === 'panos-cabeca') {
+    return (
+      <svg
+        viewBox="0 0 100 100"
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        aria-hidden="true"
+      >
+        <g transform={transform}>
+          <path
+            d="M23 36 C25 14, 75 14, 77 36 C64 31, 36 31, 23 36 Z"
+            fill={corHex}
+            stroke="#0f172a"
+            strokeWidth="2.4"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M68 25 L82 17 L77 31 Z"
+            fill={corHex}
+            stroke="#0f172a"
+            strokeWidth="2.2"
+            strokeLinejoin="round"
+          />
+        </g>
+      </svg>
+    );
+  }
+
+  if (acessorio === 'gravata-borboleta') {
+    return (
+      <svg
+        viewBox="0 0 100 100"
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        aria-hidden="true"
+      >
+        <g transform={transform}>
+          <polygon
+            points="49,83 31,76.5 31,89.5"
+            fill={corHex}
+            stroke="#0f172a"
+            strokeWidth="2.2"
+            strokeLinejoin="round"
+          />
+          <polygon
+            points="51,83 69,76.5 69,89.5"
+            fill={corHex}
+            stroke="#0f172a"
+            strokeWidth="2.2"
+            strokeLinejoin="round"
+          />
+          <rect
+            x="45.3"
+            y="78.5"
+            width="9.4"
+            height="9"
+            rx="2.6"
+            ry="2.6"
+            fill={corHex}
+            stroke="none"
+          />
+          <rect
+            x="45.3"
+            y="78.5"
+            width="9.4"
+            height="9"
+            rx="2.6"
+            ry="2.6"
+            fill="none"
+            stroke="#0f172a"
+            strokeWidth="2"
+          />
+        </g>
+      </svg>
+    );
+  }
+
+  if (acessorio === 'gravata-normal') {
+    return (
+      <svg
+        viewBox="0 0 100 100"
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        aria-hidden="true"
+      >
+        <g transform={transform}>
+          <rect
+            x="46"
+            y="76.5"
+            width="8"
+            height="6"
+            rx="1.6"
+            ry="1.6"
+            fill={corHex}
+            stroke="#0f172a"
+            strokeWidth="2.1"
+          />
+          <polygon
+            points="47,82.5 53,82.5 55,95.5 50,98.5 45,95.5"
+            fill={corHex}
+            stroke="#0f172a"
+            strokeWidth="2.3"
+            strokeLinejoin="round"
+          />
+        </g>
+      </svg>
+    );
+  }
+
+  if (acessorio === 'fone') {
+    return (
+      <svg
+        viewBox="0 0 100 100"
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        aria-hidden="true"
+      >
+        <g transform={transform}>
+          <path
+            d="M25 46 C25 15, 75 15, 75 46"
+            fill="none"
+            stroke="#0f172a"
+            strokeWidth="7.5"
+            strokeLinecap="round"
+          />
+          <path
+            d="M25 46 C25 15, 75 15, 75 46"
+            fill="none"
+            stroke={corHex}
+            strokeWidth="4.2"
+            strokeLinecap="round"
+          />
+          <rect
+            x="19"
+            y="41"
+            width="11"
+            height="18"
+            rx="4.5"
+            fill={corHex}
+            stroke="#0f172a"
+            strokeWidth="2.5"
+          />
+          <rect
+            x="70"
+            y="41"
+            width="11"
+            height="18"
+            rx="4.5"
+            fill={corHex}
+            stroke="#0f172a"
+            strokeWidth="2.5"
+          />
+        </g>
+      </svg>
+    );
+  }
+
+  if (acessorio === 'piercing') {
+    return (
+      <svg
+        viewBox="0 0 100 100"
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        aria-hidden="true"
+      >
+        <g transform={transform}>
+          <circle
+            cx="56.5"
+            cy="55"
+            r="1.9"
+            fill={corHex}
+            stroke="#0f172a"
+            strokeWidth="1.4"
+          />
+        </g>
+      </svg>
+    );
+  }
+
+  if (acessorio === 'piercing-duplo') {
+    return (
+      <svg
+        viewBox="0 0 100 100"
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        aria-hidden="true"
+      >
+        <g transform={transform}>
+          <circle
+            cx="54.5"
+            cy="53.5"
+            r="1.8"
+            fill={corHex}
+            stroke="#0f172a"
+            strokeWidth="1.35"
+          />
+          <circle
+            cx="59.5"
+            cy="59.5"
+            r="1.8"
+            fill={corHex}
+            stroke="#0f172a"
+            strokeWidth="1.35"
+          />
+        </g>
+      </svg>
+    );
+  }
+
+  return null;
+}
+
 export function AvatarStatus({
   nome,
   corPrincipal,
@@ -162,6 +493,21 @@ export function AvatarStatus({
 }: AvatarStatusProps) {
   const corFundoFinal =
     visual?.corFundo || corPrincipal || COR_FUNDO_ESTILO[estilo] || '#a855f7';
+
+  const acessorioAtivo = useMemo(() => {
+    return normalizarIdAcessorio(
+      visual?.acessorio ?? visual?.glasses ?? VISUAL_PADRAO_MICAH.glasses
+    );
+  }, [visual?.acessorio, visual?.glasses]);
+
+  const corAcessorioHex = useMemo(() => {
+    return normalizarCssHex(
+      visual?.corAcessorio ??
+        visual?.glassesColor ??
+        VISUAL_PADRAO_MICAH.glassesColor,
+      VISUAL_PADRAO_MICAH.glassesColor
+    );
+  }, [visual?.corAcessorio, visual?.glassesColor]);
 
   const avatarDataUrl = useMemo(() => {
     try {
@@ -176,10 +522,16 @@ export function AvatarStatus({
         VISUAL_PADRAO_MICAH.baseColor
       );
       const mouth = visual?.mouth ?? VISUAL_PADRAO_MICAH.mouth;
-      const glassesRaw = visual?.glasses ?? VISUAL_PADRAO_MICAH.glasses;
-      const glasses = glassesRaw === 'squares' ? 'square' : glassesRaw;
+
+      const glassesParaMicah =
+        acessorioAtivo === 'round' || acessorioAtivo === 'square'
+          ? acessorioAtivo
+          : 'none';
+
       const glassesColor = limparHex(
-        visual?.glassesColor ?? VISUAL_PADRAO_MICAH.glassesColor,
+        visual?.corAcessorio ??
+          visual?.glassesColor ??
+          VISUAL_PADRAO_MICAH.glassesColor,
         VISUAL_PADRAO_MICAH.glassesColor
       );
       const facialHair = visual?.facialHair ?? VISUAL_PADRAO_MICAH.facialHair;
@@ -203,11 +555,11 @@ export function AvatarStatus({
         opcoes.hair = [hair];
       }
 
-      if (glasses === 'none') {
+      if (glassesParaMicah === 'none') {
         opcoes.glassesProbability = 0;
       } else {
         opcoes.glassesProbability = 100;
-        opcoes.glasses = [glasses];
+        opcoes.glasses = [glassesParaMicah];
         opcoes.glassesColor = [glassesColor];
       }
 
@@ -233,11 +585,12 @@ export function AvatarStatus({
       return '';
     }
   }, [
+    acessorioAtivo,
     visual?.baseColor,
+    visual?.corAcessorio,
     visual?.eyebrows,
     visual?.facialHair,
     visual?.facialHairColor,
-    visual?.glasses,
     visual?.glassesColor,
     visual?.hair,
     visual?.hairColor,
@@ -248,7 +601,7 @@ export function AvatarStatus({
   return (
     <div className="flex flex-col items-center select-none">
       <div
-        className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-white/80 shadow-lg"
+        className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-white/80 shadow-lg"
         style={{ backgroundColor: corFundoFinal }}
       >
         {avatarDataUrl ? (
@@ -262,6 +615,12 @@ export function AvatarStatus({
             {(nome || 'S').slice(0, 1).toUpperCase()}
           </span>
         )}
+        <CamadaAcessorioExtra
+          acessorio={acessorioAtivo}
+          corHex={corAcessorioHex}
+          offsetX={visual?.acessorioX ?? 0}
+          offsetY={visual?.acessorioY ?? 0}
+        />
       </div>
       <span className="mt-1 rounded-full border border-white/20 bg-slate-950/90 px-2 py-0.5 text-[10px] font-semibold text-white shadow">
         {nome}
